@@ -1,4 +1,4 @@
-# hitman-hashes-json
+# Hitman Hashes in JSON
 A JSON dump of the hashes in Hitman. You can build it yourself with `python3 build_json.py`, but the easiest way is to just download the latest release file.
 
 Here's a sample format that it's in:
