@@ -11,18 +11,18 @@ class Header:
         self.patch_count = int.from_bytes(f.read(4), 'little')
 
 class RPKG:
-    version: int = -1
-    # Only used in version 2
-    v2_header: bytes
-    is_patch_file: bool = False
-
-    header: Header
-    hashes: Dict[int, Hash] = dict()
-    hashes_by_hash: Dict[int, Hash] = dict()
-    reverse_dependencies: Dict[int, List[int]] = dict()
-
     def __init__(self, file_name: str, file_path: str):
         self.file_name = file_name
         self.file_path = file_path
+
+        self.version: int = -1
+        # Only used in version 2
+        self.v2_header: bytes
+        self.is_patch_file: bool = False
+
+        self.header: Header
+        self.hashes: Dict[int, Hash] = dict()
+        self.hashes_by_hash: Dict[int, Hash] = dict()
+        self.reverse_dependencies: Dict[int, List[int]] = dict()
 
     

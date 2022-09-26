@@ -1,7 +1,8 @@
 import os, requests, json, zipfile, re
 from extract import extract
-from utils import hex_to_hash
+from utils import hex_to_hash, hash_to_hex
 from typing import Dict, Any
+from Hash import Hash
 
 if os.path.exists('./rpkg'):
     print("rpkg folder already exists. Assuming that it's recent.")
@@ -47,9 +48,11 @@ directory = "D:\\Program Files (x86)\\Epic Games\\HITMAN3\\Runtime"
 # Open the directory and determine all of the possible rkpg files
 rpkgs_names = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and f.endswith('.rpkg')]
 
-data: Dict[int, Dict[str, Any]] = dict()
+data: Dict[str, Dict[str, Any]] = dict()
 
 print(rpkgs_names)
+
+all_hashes: Dict[int, Hash] = dict()
 
 # Download the raw TGA texture files
 for rpkg_name in rpkgs_names:
@@ -66,15 +69,20 @@ for rpkg_name in rpkgs_names:
         chunk_num = chunk_info.group(1)
 
     for hash in rpkg.hashes_by_hash:
-        if hash not in data:
-            data[hash] = {
-                'name': mapping[hash],
-                'hex': rpkg.hashes_by_hash[hash].getHexName(),
-                'type': rpkg.hashes_by_hash[hash].hash_resource_type,
-                'depends': rpkg.hashes_by_hash[hash].getDependencies(),
-                'chunks': [],
-            }
-        data[hash]['chunks'].append(chunk_num)
+        if hash in all_hashes:
+            all_hashes[hash].chunks.append(chunk_num)
+        else:
+            all_hashes[hash] = rpkg.hashes_by_hash[hash]
+            all_hashes[hash].chunks = [chunk_num]
+
+for hash in all_hashes:
+    file = all_hashes[hash].getHexName()
+    data[file] = {
+        'name': mapping[hash],
+        'type': all_hashes[hash].hash_resource_type,
+        'depends': [(all_hashes[x].getHexName() if x in all_hashes else hash_to_hex(x)) for x in all_hashes[hash].getDependencies()],
+        'chunks': all_hashes[hash].chunks,
+    }
 
 # Serializing json
 json_object = json.dumps(data, indent=4)
@@ -82,5 +90,3 @@ json_object = json.dumps(data, indent=4)
 # Writing to sample.json
 with open("hashes.json", "w") as outfile:
     outfile.write(json_object)
-
-print(data)

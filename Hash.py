@@ -33,19 +33,21 @@ class HashResource:
         self.size_in_video_memory = int.from_bytes(f.read(4), 'little')
 
 class Hash:
-    header: HashHeader
-    resource: HashResource
-    hash_reference_data: Optional[HashReferenceData] = None
-
-    lz4ed: bool = False
-    xored: bool = False
-    size: int = 0
-    # TODO: This is a duplicate of self.header.hash
-    hash_value: int = 0
-    hash_resource_type: str = ''
-
     def __init__(self, header: HashHeader):
         self.header = header
+
+        self.header: HashHeader
+        self.resource: HashResource
+        self.hash_reference_data: Optional[HashReferenceData] = None
+
+        self.lz4ed: bool = False
+        self.xored: bool = False
+        self.size: int = 0
+        # TODO: This is a duplicate of self.header.hash
+        self.hash_value: int = 0
+        self.hash_resource_type: str = ''
+
+        self.chunks: List[str] = []
 
     def getHexName(self) -> str:
         main = format(self.hash_value, 'x').upper()
