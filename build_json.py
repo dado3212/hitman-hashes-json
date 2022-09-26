@@ -35,7 +35,7 @@ with open('./rpkg/hash_list.txt', 'r') as f:
     f.readline()
     # actual lines
     for line in f.readlines():
-        split = line.split(',')
+        split = line.split(',', 1)
         ioi_string = split[1].rstrip()
         hex = split[0][:-5]
         extension = split[0][:-4]
