@@ -1,32 +1,28 @@
-import os, requests, json, zipfile, re
+import os, requests, json, re
 from extract import extract
 from utils import hex_to_hash, hash_to_hex
 from typing import Dict, Any
 from Hash import Hash
 
-if os.path.exists('./rpkg'):
-    print("rpkg folder already exists. Assuming that it's recent.")
-else:
-    # Download rpkg
-    rpkg_tool_info = json.loads(requests.get('https://api.github.com/repos/glacier-modding/RPKG-Tool/releases/latest').text)
-    download_links = [x['browser_download_url'] for x in rpkg_tool_info['assets'] if 'src' not in x['name']]
-    if (len(download_links) != 1):
-        print("Something went wrong with downloading rpkg, aborting.")
-        exit()
+try:
+    os.remove('./hash_list.txt')
+except OSError:
+    pass
 
-    r = requests.get(download_links[0], stream=True)
-    with open('rpkg.zip', 'wb') as fd:
-        for chunk in r.iter_content(chunk_size=128):
-            fd.write(chunk)
+# Download latest hashes
+r = requests.get('https://hitmandb.notex.app/latest-hashes.7z', stream=True)
+with open('latest-hashes.7z', 'wb') as fd:
+    for chunk in r.iter_content(chunk_size=128):
+        fd.write(chunk)
 
-    with zipfile.ZipFile('rpkg.zip') as zf:
-        zf.extractall('rpkg')
+# Fix this for your setup
+os.system('"C:\\Program Files\\7-Zip\\7z.exe" e ./latest-hashes.7z')
 
-    os.remove('rpkg.zip')
+os.remove('./latest-hashes.7z')
 
 mapping: Dict[int, str] = dict()
 
-with open('./rpkg/hash_list.txt', 'r') as f:
+with open('./hash_list.txt', 'r') as f:
     # completion
     f.readline()
     # hashes count

@@ -19,9 +19,9 @@ Here's a sample format that it's in:
         ...
     ],
 }
- ```
+```
  
- ## Thanks
+## Thanks
 
 This relies heavily on [PRKG-Tool](https://notex.app/rpkg/) both directly (the hash_list.txt file) and indirectly (I ported some of the code to Python, relying heavily on the C++ logic). A HUGE thanks to the author of the original repo, available at https://github.com/glacier-modding/RPKG-Tool.
 
