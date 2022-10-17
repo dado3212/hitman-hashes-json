@@ -4,21 +4,18 @@ A JSON dump of the hashes in Hitman. You can build it yourself with `python3 bui
 Here's a sample format that it's in:
 
 ```
-"13992849215881565": {
-    "name": "[modules:/zentity.class].pc_entitytype",
-    "hex": "0031B66C16E8815D.CPPT",
+"0004C5883B5D9CC5": {
+    "name": "[modules:/zrenderdestinationtextureentity.class].pc_entitytype",
     "type": "CPPT",
     "depends": [
-        16597996125385180
+        "008E76B1A30210C7"
     ],
     "chunks": [
         "0",
-        "0.1",
-        "0.2",
-        "1",
-        ...
+        "0.1"
     ],
-}
+    "correct_name": true
+},
 ```
  
 ## Thanks

@@ -50,8 +50,11 @@ class Hash:
         self.chunks: List[str] = []
 
     def getHexName(self) -> str:
+        return self.getFormattedHash() + '.' + self.hash_resource_type
+
+    def getFormattedHash(self) -> str:
         main = format(self.hash_value, 'x').upper()
-        return main.rjust(16, '0') + '.' + self.hash_resource_type
+        return main.rjust(16, '0')
 
     def getDependencies(self) -> List[int]:
         reference_data = self.hash_reference_data

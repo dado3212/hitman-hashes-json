@@ -1,6 +1,6 @@
 import os, requests, json, re
 from extract import extract
-from utils import hex_to_hash, hash_to_hex
+from utils import hex_to_hash, hash_to_hex, ioi_string_to_hex
 from typing import Dict, Any
 from Hash import Hash
 
@@ -72,12 +72,13 @@ for rpkg_name in rpkgs_names:
             all_hashes[hash].chunks = [chunk_num]
 
 for hash in all_hashes:
-    file = all_hashes[hash].getHexName()
+    file = all_hashes[hash].getFormattedHash()
     data[file] = {
         'name': mapping[hash],
         'type': all_hashes[hash].hash_resource_type,
-        'depends': [(all_hashes[x].getHexName() if x in all_hashes else hash_to_hex(x)) for x in all_hashes[hash].getDependencies()],
+        'depends': [(all_hashes[x].getFormattedHash() if x in all_hashes else hash_to_hex(x)) for x in all_hashes[hash].getDependencies()],
         'chunks': all_hashes[hash].chunks,
+        'correct_name': ioi_string_to_hex(mapping[hash]) == file
     }
 
 # Serializing json
