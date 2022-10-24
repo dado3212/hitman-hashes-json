@@ -49,6 +49,8 @@ class Hash:
 
         self.chunks: List[str] = []
 
+        self.hex_strings: List[str] = []
+
     def getHexName(self) -> str:
         return self.getFormattedHash() + '.' + self.hash_resource_type
 

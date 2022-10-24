@@ -2,17 +2,34 @@ from os.path import getsize
 from typing import List
 from Hash import Hash, HashHeader, HashResource, HashReferenceData
 from RPKG import RPKG, Header
-import re #, numpy, math
+import re, numpy, math
 
-xor_array = [0xDC, 0x45, 0xA6, 0x9C, 0xD3, 0x72, 0x4C, 0xAB]
-xor_length = len(xor_array)
+xor_array = bytearray([0xDC, 0x45, 0xA6, 0x9C, 0xD3, 0x72, 0x4C, 0xAB])
 
-def xor(raw_data: bytearray) -> bytearray:
+def xor(raw_data: bytearray, length: int) -> bytearray:
     # Adapted from crypto::xor_data
     # https://github.com/glacier-modding/RPKG-Tool/blob/344f6a9c73abe41edfda427e17ed2aa4189fdb3e/rpkg_src/crypto.cpp#L9
-    for byte_index in range(0, len(raw_data)):
-        raw_data[byte_index] ^= xor_array[byte_index % xor_length]
-    return raw_data
+
+    # Key multiplication in order to match the data length
+    key = (xor_array*int(math.ceil(float(length)/8.0)))[:length]
+    return (numpy.bitwise_xor(raw_data, key)).tobytes()
+
+def chunkify_bytes(raw_data: bytearray) -> List[str]:
+    chunks: List[str] = []
+    current_chunk = ''
+    chunk_size = 0
+    for byte in raw_data:
+        if byte >= 32 and byte <= 126:
+            current_chunk += chr(byte)
+            chunk_size += 1
+        else:
+            if chunk_size > 4:
+                # Doesn't filter out ALL of the junk, but it does an okay job
+                if chunk_size > 20 or re.match(r'.*([A-Z]{4}|[a-z]{4}).*', current_chunk):
+                    chunks.append(current_chunk)
+            current_chunk = ''
+            chunk_size = 0
+    return chunks
 
 def extract(rpkg_name: str, rpkg_path: str):
     rpkg = RPKG(rpkg_name, rpkg_path)
@@ -132,21 +149,12 @@ def extract(rpkg_name: str, rpkg_path: str):
         raw_data = bytearray(f2.read(hash_size))
         f2.close()
         if rpkg.hashes[i].xored:
-            raw_data = xor(raw_data)
+            raw_data = xor(raw_data, hash_size)
+
+        rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data)
 
         if rpkg.hashes[i].getHexName() == '00E0799463A7045E.WWEV':
-            chunks: List[str] = []
-            current_chunk = ''
-            for byte in raw_data:
-                if byte >= 32 and byte <= 126:
-                    current_chunk += chr(byte)
-                else:
-                    if len(current_chunk) > 4:
-                        # Doesn't filter out ALL of the junk, but it does an okay job
-                        if re.match(r'.*([A-Z]{4}|[a-z]{4}).*', current_chunk):
-                            chunks.append(current_chunk)
-                    current_chunk = ''
-            print(chunks)
+            print(rpkg.hashes[i].hex_strings)
             exit()
 
         # I don't have a great LZ4 decompression hookup in Python that's working
