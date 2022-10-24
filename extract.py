@@ -2,6 +2,17 @@ from os.path import getsize
 from typing import List
 from Hash import Hash, HashHeader, HashResource, HashReferenceData
 from RPKG import RPKG, Header
+import re #, numpy, math
+
+xor_array = [0xDC, 0x45, 0xA6, 0x9C, 0xD3, 0x72, 0x4C, 0xAB]
+xor_length = len(xor_array)
+
+def xor(raw_data: bytearray) -> bytearray:
+    # Adapted from crypto::xor_data
+    # https://github.com/glacier-modding/RPKG-Tool/blob/344f6a9c73abe41edfda427e17ed2aa4189fdb3e/rpkg_src/crypto.cpp#L9
+    for byte_index in range(0, len(raw_data)):
+        raw_data[byte_index] ^= xor_array[byte_index % xor_length]
+    return raw_data
 
 def extract(rpkg_name: str, rpkg_path: str):
     rpkg = RPKG(rpkg_name, rpkg_path)
@@ -100,11 +111,50 @@ def extract(rpkg_name: str, rpkg_path: str):
             hash_reference_data = HashReferenceData(f)
             rpkg.hashes[i].hash_reference_data = hash_reference_data
             
+        # Calculate from dependencies
         rpkg.hashes_by_hash[rpkg.hashes[i].hash_value] = rpkg.hashes[i]
         for dependency in rpkg.hashes[i].getDependencies():
             if dependency not in rpkg.reverse_dependencies:
                 rpkg.reverse_dependencies[dependency] = []
             rpkg.reverse_dependencies[dependency].append(rpkg.hashes[i].hash_value)
+
+        # Calculate hex string
+        # Adapted from get_hash_in_rpkg_data_in_hex_view in 
+        # https://github.com/glacier-modding/RPKG-Tool/blob/344f6a9c73abe41edfda427e17ed2aa4189fdb3e/rpkg_src/rpkg_dll.cpp#L825
+        if rpkg.hashes[i].lz4ed:
+            hash_size = rpkg.hashes[i].header.data_size
+            if rpkg.hashes[i].xored:
+                hash_size &= 0x3FFFFFFF
+        else:
+            hash_size = rpkg.hashes[i].resource.size_final
+        f2 = open(rpkg_path, 'rb')
+        f2.seek(rpkg.hashes[i].header.data_offset)
+        raw_data = bytearray(f2.read(hash_size))
+        f2.close()
+        if rpkg.hashes[i].xored:
+            raw_data = xor(raw_data)
+
+        if rpkg.hashes[i].getHexName() == '00E0799463A7045E.WWEV':
+            chunks: List[str] = []
+            current_chunk = ''
+            for byte in raw_data:
+                if byte >= 32 and byte <= 126:
+                    current_chunk += chr(byte)
+                else:
+                    if len(current_chunk) > 4:
+                        # Doesn't filter out ALL of the junk, but it does an okay job
+                        if re.match(r'.*([A-Z]{4}|[a-z]{4}).*', current_chunk):
+                            chunks.append(current_chunk)
+                    current_chunk = ''
+            print(chunks)
+            exit()
+
+        # I don't have a great LZ4 decompression hookup in Python that's working
+        # correctly yet. Skip this for now, hope it's not critical for path
+        # derivation
+        # if rpkg.hashes[i].lz4ed:
+        #     raw_data = lz4.frame.decompress(raw_data)
+
 
     f.close()
     return rpkg
