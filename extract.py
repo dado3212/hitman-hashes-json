@@ -14,21 +14,25 @@ def xor(raw_data: bytearray, length: int) -> bytearray:
     key = (xor_array*int(math.ceil(float(length)/8.0)))[:length]
     return (numpy.bitwise_xor(raw_data, key)).tobytes()
 
-def chunkify_bytes(raw_data: bytearray) -> List[str]:
+def chunkify_bytes(raw_data: bytearray, length: int, min_size: int = 10) -> List[str]:
+    # Doesn't filter out ALL of the junk, but it does an okay job
+    # if chunk_size > 20 or re.match(r'.*([A-Z]{4}|[a-z]{4}).*', current_chunk):
+
+    # otherwise we're hitting timeouts
+    max_length = 1200
+
     chunks: List[str] = []
-    current_chunk = ''
-    chunk_size = 0
-    for byte in raw_data:
-        if byte >= 32 and byte <= 126:
-            current_chunk += chr(byte)
-            chunk_size += 1
+    current_pos = 0
+    i = 0
+    for i in range(min(length, max_length)):
+        if 32 <= raw_data[i] <= 126:
+            continue
         else:
-            if chunk_size > 4:
-                # Doesn't filter out ALL of the junk, but it does an okay job
-                if chunk_size > 20 or re.match(r'.*([A-Z]{4}|[a-z]{4}).*', current_chunk):
-                    chunks.append(current_chunk)
-            current_chunk = ''
-            chunk_size = 0
+            if (i - current_pos) >= min_size:
+                chunks.append((raw_data[current_pos:i]).decode('utf-8'))
+            current_pos = i + 1
+    if length < max_length and (length - current_pos) >= min_size:
+        chunks.append((raw_data[current_pos:]).decode('utf-8'))
     return chunks
 
 def extract(rpkg_name: str, rpkg_path: str):
@@ -144,6 +148,7 @@ def extract(rpkg_name: str, rpkg_path: str):
                 hash_size &= 0x3FFFFFFF
         else:
             hash_size = rpkg.hashes[i].resource.size_final
+
         f2 = open(rpkg_path, 'rb')
         f2.seek(rpkg.hashes[i].header.data_offset)
         raw_data = bytearray(f2.read(hash_size))
@@ -151,11 +156,7 @@ def extract(rpkg_name: str, rpkg_path: str):
         if rpkg.hashes[i].xored:
             raw_data = xor(raw_data, hash_size)
 
-        rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data)
-
-        if rpkg.hashes[i].getHexName() == '00E0799463A7045E.WWEV':
-            print(rpkg.hashes[i].hex_strings)
-            exit()
+        rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data, hash_size)
 
         # I don't have a great LZ4 decompression hookup in Python that's working
         # correctly yet. Skip this for now, hope it's not critical for path

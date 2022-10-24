@@ -14,7 +14,11 @@ Here's a sample format that it's in:
         "0",
         "0.1"
     ],
-    "correct_name": true
+    "correct_name": true,
+    "hex_strings": [
+        "TArray<ZEntityReferenceI",
+        ".ERoomBehaviour"
+    ]
 },
 ```
  
