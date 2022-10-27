@@ -21,6 +21,10 @@ Here's a sample format that it's in:
     ]
 },
 ```
+
+LZ4 DLL extracted from the download for Windows from this release - https://github.com/lz4/lz4/releases/tag/v1.9.4. The DLL loading unfortunately
+makes this likely very very difficult to run on a computer, that's not mine. Sorry, good luck, I'll accept any pull request that fixes this but after
+spending an hour bashing my head into old Python installs, a working version takes priority.
  
 ## Thanks
 

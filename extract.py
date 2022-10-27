@@ -1,8 +1,9 @@
 from os.path import getsize
-from typing import List
+from typing import List, Union
 from Hash import Hash, HashHeader, HashResource, HashReferenceData
 from RPKG import RPKG, Header
 import re, numpy, math
+from lz4 import decompress
 
 xor_array = bytearray([0xDC, 0x45, 0xA6, 0x9C, 0xD3, 0x72, 0x4C, 0xAB])
 
@@ -14,7 +15,7 @@ def xor(raw_data: bytearray, length: int) -> bytearray:
     key = (xor_array*int(math.ceil(float(length)/8.0)))[:length]
     return (numpy.bitwise_xor(raw_data, key)).tobytes()
 
-def chunkify_bytes(raw_data: bytearray, length: int, min_size: int = 10) -> List[str]:
+def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, min_size: int = 10) -> List[str]:
     # Doesn't filter out ALL of the junk, but it does an okay job
     # if chunk_size > 20 or re.match(r'.*([A-Z]{4}|[a-z]{4}).*', current_chunk):
 
@@ -156,14 +157,13 @@ def extract(rpkg_name: str, rpkg_path: str):
         if rpkg.hashes[i].xored:
             raw_data = xor(raw_data, hash_size)
 
-        rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data, hash_size)
+        if rpkg.hashes[i].lz4ed:
+            data_size = rpkg.hashes[i].resource.size_final
+            raw_data = decompress(raw_data, data_size)
+        else:
+            data_size = hash_size
 
-        # I don't have a great LZ4 decompression hookup in Python that's working
-        # correctly yet. Skip this for now, hope it's not critical for path
-        # derivation
-        # if rpkg.hashes[i].lz4ed:
-        #     raw_data = lz4.frame.decompress(raw_data)
-
+        rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data, data_size)
 
     f.close()
     return rpkg
