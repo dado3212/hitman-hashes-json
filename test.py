@@ -1,7 +1,7 @@
 import os, math, numpy
 from typing import List, Tuple
 from lz4 import decompress
-from extract import extract, chunkify_bytes, xtea_decrypt_localization, xor, symmetric_key_decrypt_localization 
+from extract import extract, chunkify_bytes, xor, decode_locr_to_json_strings 
 from utils import print_bytes
 
 # Test functions for messing around with logic
@@ -64,57 +64,4 @@ raw_bytes = decompress(raw_data, 617)
 # print_bytes(raw_bytes) - confirm that we're correctly decoding to this point
 
 # decode JSON
-if (raw_bytes[0] == 0 or raw_bytes[0] == 1):
-    position = 1
-    number_of_languages = int((int.from_bytes(raw_bytes[position:position+4], 'little') - 1)/4)
-    isLOCRv2 = True
-else:
-    position = 0
-    number_of_languages = int(int.from_bytes(raw_bytes[position:position+4], 'little')/4)
-    isLOCRv2 = False
-
-# symmetric key cipher
-symKey = (number_of_languages == 10 and not isLOCRv2)
-
-offsets: List[int] = []
-for i in range(number_of_languages):
-    offset = int.from_bytes(raw_bytes[position:position+4], 'little')
-    offsets.append(offset)
-    position += 4
-
-for i in range(number_of_languages):
-    if offsets[i] == 0xFFFFFFFF:
-        continue
-    language_string_count = int.from_bytes(raw_bytes[position:position+4], 'little')
-    position += 4
-    print(language_string_count)
-
-    for i in range(language_string_count):
-        temp_language_string_hash = int.from_bytes(raw_bytes[position:position+4], 'little')
-        position += 4
-
-        temp_language_string_length = int.from_bytes(raw_bytes[position:position+4], 'little')
-        position += 4
-
-        print(temp_language_string_hash, temp_language_string_length, raw_bytes[position:position+temp_language_string_length])
-
-        temp_string = raw_bytes[position:position+temp_language_string_length]
-        position += temp_language_string_length + 1
-
-        if symKey:
-            # symmetric_key_decrypt_localization, ignoring for now
-            string = ''.join([chr(symmetric_key_decrypt_localization(x)) for x in temp_string])
-            print(string)
-            continue
-        else:
-            string = None
-            assert temp_language_string_length % 8 == 0
-            for i in range(int(temp_language_string_length / 8)):
-                a = xtea_decrypt_localization(temp_string[i*8:i*8 + 4], temp_string[i*8 + 4:i*8 + 8])
-                print(a)
-                if (string is None):
-                    string = a[0] + a[1]
-                else:
-                    string += a[0] + a[1]
-                print()
-            print(string.decode('utf-8'))
+print(decode_locr_to_json_strings(raw_bytes))

@@ -4,6 +4,7 @@ from Hash import Hash, HashHeader, HashResource, HashReferenceData
 from RPKG import RPKG, Header
 import re, numpy, math
 from lz4 import decompress
+import ctypes
 
 xor_array = bytearray([0xDC, 0x45, 0xA6, 0x9C, 0xD3, 0x72, 0x4C, 0xAB])
 
@@ -29,13 +30,14 @@ def xtea_decrypt_localization(v0_init: bytes, v1_init: bytes) -> Tuple[bytes, by
     # Adapted from crypto::xtea_decrypt_localization
     # https://github.com/glacier-modding/RPKG-Tool/blob/48f01af7cbc1b782473f1ab24362cca913c9686a/src/crypto.cpp#L34
     sum = 0xC6EF3720
-    v0 = numpy.frombuffer(v0_init, dtype=numpy.uint32)
-    v1 = numpy.frombuffer(v1_init, dtype=numpy.uint32)
+    v0 = ctypes.c_uint32(int.from_bytes(v0_init, byteorder='little'))
+    v1 = ctypes.c_uint32(int.from_bytes(v1_init, byteorder='little'))
     for _ in range(32): # num_rounds
-        v1 = v1 - ((v0 << 4 ^ v0 >> 5) + v0 ^ sum + l10n_key[sum >> 11 & 3])
+        v1.value -= (v0.value << 4 ^ v0.value >> 5) + v0.value ^ sum + l10n_key[sum >> 11 & 3]
         sum -= l10n_delta
-        v0 = v0 - ((v1 << 4 ^ v1 >> 5) + v1 ^ sum + l10n_key[sum & 3])
-    return (v0.tobytes(), v1.tobytes())
+        v0.value -= (v1.value << 4 ^ v1.value >> 5) + v1.value ^ sum + l10n_key[sum & 3]
+
+    return (v0.value.to_bytes(4, byteorder='little'), v1.value.to_bytes(4, byteorder='little'))
 
 def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, min_size: int = 10) -> List[str]:
     # Doesn't filter out ALL of the junk, but it does an okay job
@@ -57,6 +59,55 @@ def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, min_size: int 
     if length < max_length and (length - current_pos) >= min_size:
         chunks.append((raw_data[current_pos:]).decode('utf-8'))
     return chunks
+
+def decode_locr_to_json_strings(raw_bytes: bytes) -> List[str]:
+    if (raw_bytes[0] == 0 or raw_bytes[0] == 1):
+        position = 1
+        number_of_languages = int((int.from_bytes(raw_bytes[position:position+4], 'little') - 1)/4)
+        isLOCRv2 = True
+    else:
+        position = 0
+        number_of_languages = int(int.from_bytes(raw_bytes[position:position+4], 'little')/4)
+        isLOCRv2 = False
+
+    # symmetric key cipher
+    symKey = (number_of_languages == 10 and not isLOCRv2)
+
+    offsets: List[int] = []
+    for i in range(number_of_languages):
+        offset = int.from_bytes(raw_bytes[position:position+4], 'little')
+        offsets.append(offset)
+        position += 4
+
+    all_strings: set[str] = set()
+    # This can go up to number_of_languages but we only care about the first two, xx and en
+    for i in range(2):
+        if offsets[i] == 0xFFFFFFFF:
+            continue
+        language_string_count = int.from_bytes(raw_bytes[position:position+4], 'little')
+        position += 4
+
+        for i in range(language_string_count):
+            # temp_language_string_hash = int.from_bytes(raw_bytes[position:position+4], 'little')
+            position += 4
+
+            temp_language_string_length = int.from_bytes(raw_bytes[position:position+4], 'little')
+            position += 4
+
+            temp_string = raw_bytes[position:position+temp_language_string_length]
+            position += temp_language_string_length + 1
+
+            if symKey:
+                # symmetric_key_decrypt_localization, ignoring for now
+                string = ''.join([chr(symmetric_key_decrypt_localization(x)) for x in temp_string])
+            else:
+                string = ''
+                assert temp_language_string_length % 8 == 0
+                for i in range(int(temp_language_string_length / 8)):
+                    a = xtea_decrypt_localization(temp_string[i*8:i*8 + 4], temp_string[i*8 + 4:i*8 + 8])
+                    string += a[0].decode('utf-8') + a[1].decode('utf-8')
+            all_strings.add(string.strip('\x00'))
+    return list(all_strings)    
 
 def extract(rpkg_name: str, rpkg_path: str):
     rpkg = RPKG(rpkg_name, rpkg_path)
@@ -186,8 +237,10 @@ def extract(rpkg_name: str, rpkg_path: str):
             data_size = hash_size
 
         # RTLV, LOCR, DLGE are all JSON
-
-        rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data, data_size)
+        if rpkg.hashes[i].hash_resource_type == 'LOCR':
+            rpkg.hashes[i].hex_strings = decode_locr_to_json_strings(raw_data)
+        else:
+            rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data, data_size)  
 
     f.close()
     return rpkg
