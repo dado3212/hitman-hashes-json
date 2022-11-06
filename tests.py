@@ -19,13 +19,13 @@ class UtilsTest(unittest.TestCase):
     def test_chunkify_bytes(self):
         string = 'hello~there'
         byte = [ord(x) if x != '~' else 12 for x in string]
-        self.assertEqual(chunkify_bytes(bytearray(byte), len(string), 5), ['hello', 'there'])
+        self.assertEqual(chunkify_bytes(bytearray(byte), len(string), '', 5), ['hello', 'there'])
         string = 'Testing~thisone~out~'
         byte = [ord(x) if x != '~' else 12 for x in string]
-        self.assertEqual(chunkify_bytes(bytearray(byte), len(string), 5), ['Testing', 'thisone'])
+        self.assertEqual(chunkify_bytes(bytearray(byte), len(string), '', 5), ['Testing', 'thisone'])
         string = '~h~~e~llothere~~12'
         byte = [ord(x) if x != '~' else 12 for x in string]
-        self.assertEqual(chunkify_bytes(bytearray(byte), len(string), 5), ['llothere'])
+        self.assertEqual(chunkify_bytes(bytearray(byte), len(string), '', 5), ['llothere'])
 
 if __name__ == '__main__':
     unittest.main()

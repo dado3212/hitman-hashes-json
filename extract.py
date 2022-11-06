@@ -39,12 +39,40 @@ def xtea_decrypt_localization(v0_init: bytes, v1_init: bytes) -> Tuple[bytes, by
 
     return (v0.value.to_bytes(4, byteorder='little'), v1.value.to_bytes(4, byteorder='little'))
 
-def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, min_size: int = 10) -> List[str]:
+def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, resource_type: str, min_size: int = 10) -> List[str]:
     # Doesn't filter out ALL of the junk, but it does an okay job
     # if chunk_size > 20 or re.match(r'.*([A-Z]{4}|[a-z]{4}).*', current_chunk):
 
-    # otherwise we're hitting timeouts
-    max_length = 1200
+    # Nothing useful
+    if resource_type in ['TEXD', 'PRIM', 'WWEM', 'VTXD', 'TEXT', 'MJBA', 'ALOC', 'WBNK', 'SCDA', 'GFXI', 'SDEF']:
+        return []
+    elif resource_type in ['RTLV']:
+        # TODO: Convert this to JSON extraction
+        return []
+    # Didn't check for use, but they're big and I think it's useless
+    elif resource_type in ['NAVP', 'AIRG']:
+        return []
+    # Only has useful data in the beginning...I think
+    elif resource_type in ['GFXV', 'WWEV', 'WWES']:
+        max_length = 5000
+    # this scares me
+    elif resource_type == 'BOXC':
+        max_length = 5000
+    elif resource_type in ['TBLU', 'TEMP']:
+        # TODO: Should be able to skip to FF FF FF FF FF FF sections if we're
+        # worried
+        max_length = 1000000
+    # kind of just useful in general, keep it big (ATMD, ECPB, FXAS, MATB, MATI are all small) (MATI might be only useful at the beginning)
+    elif resource_type in ['BORG', 'ASVA', 'ATMD', 'ECPB', 'FXAS', 'MATB', 'MATI']:
+        max_length = 1000000
+    elif resource_type in ['MATE', 'GFXF', 'MRTN']:
+        # TODO: Data at the beginning and the end, can we excise the middle?
+        max_length = 1000000
+    # Good through the whole thing, but could probably be kept small
+    elif resource_type in ['ATMD']:
+        max_length = 1000000
+    else:
+        max_length = 1000000
 
     chunks: List[str] = []
     current_pos = 0
@@ -99,14 +127,18 @@ def decode_locr_to_json_strings(raw_bytes: bytes) -> List[str]:
 
             if symKey:
                 # symmetric_key_decrypt_localization, ignoring for now
-                string = ''.join([chr(symmetric_key_decrypt_localization(x)) for x in temp_string])
+                all_strings.add(''.join([chr(symmetric_key_decrypt_localization(x)) for x in temp_string]))
             else:
-                string = ''
+                string = None
                 assert temp_language_string_length % 8 == 0
                 for i in range(int(temp_language_string_length / 8)):
                     a = xtea_decrypt_localization(temp_string[i*8:i*8 + 4], temp_string[i*8 + 4:i*8 + 8])
-                    string += a[0].decode('utf-8') + a[1].decode('utf-8')
-            all_strings.add(string.strip('\x00'))
+                    if (string is None):
+                        string = a[0] + a[1]
+                    else:
+                        string += a[0] + a[1]
+                if string is not None:
+                    all_strings.add(string.decode('utf-8').strip('\x00'))
     return list(all_strings)    
 
 def decode_dlge_to_string(raw_bytes: bytes) -> Optional[str]:
@@ -146,13 +178,16 @@ def decode_dlge_to_string(raw_bytes: bytes) -> Optional[str]:
         temp_string = raw_bytes[position:position+temp_language_string_sizes]
         position += temp_language_string_sizes + 1
 
-        string = ''
+        string = None
         assert temp_language_string_sizes % 8 == 0
         for i in range(int(temp_language_string_sizes / 8)):
             a = xtea_decrypt_localization(temp_string[i*8:i*8 + 4], temp_string[i*8 + 4:i*8 + 8])
-            string += a[0].decode('utf-8') + a[1].decode('utf-8')
-        string = string.strip('\x00')
-        return string
+            if (string is None):
+                string = a[0] + a[1]
+            else:
+                string += a[0] + a[1]
+        if string is not None:
+            return string.decode('utf-8').strip('\x00')
     return None
 
 def extract(rpkg_name: str, rpkg_path: str):
@@ -282,31 +317,15 @@ def extract(rpkg_name: str, rpkg_path: str):
         else:
             data_size = hash_size
 
-        if rpkg.hashes[i].getFormattedHash() == '000ECD34A5D5DD7D':
-            print(raw_data)
-            print(rpkg_path)
-            print(rpkg.hashes[i].header.data_offset)
-            print(hash_size)
-            print(rpkg.hashes[i].lz4ed)
-            print(rpkg.hashes[i].xored)
-            print(rpkg.hashes[i].resource.size_final)
-            exit()
-
         # RTLV, LOCR, DLGE are all JSON
         if rpkg.hashes[i].hash_resource_type == 'LOCR':
             rpkg.hashes[i].hex_strings = decode_locr_to_json_strings(raw_data)
         elif rpkg.hashes[i].hash_resource_type == 'DLGE':
-            try:
-                string = decode_dlge_to_string(raw_data)
-            except:
-                print(rpkg.hashes[i].getHexName(), data_size)
-                exit()
+            string = decode_dlge_to_string(raw_data)
             if string is not None:
                 rpkg.hashes[i].hex_strings = [string]
         else:
-            if data_size > 1200:
-                print(rpkg.hashes[i].getHexName(), data_size)
-            rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data, data_size)  
+            rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data, data_size, rpkg.hashes[i].hash_resource_type)
 
     f.close()
     return rpkg

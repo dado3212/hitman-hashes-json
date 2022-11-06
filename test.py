@@ -17,7 +17,7 @@ directory = "D:\\Program Files (x86)\\Epic Games\\HITMAN3\\Runtime"
 
 # Add the following for whatever hash you want to analyze to extract.py before the chunkify piece
 
-# if rpkg.hashes[i].getFormattedHash() == '000ECD34A5D5DD7D':
+# if rpkg.hashes[i].getFormattedHash() == '00DDDDCFBFA2477B':
 #     print(raw_data)
 #     print(rpkg_path)
 #     print(rpkg.hashes[i].header.data_offset)
@@ -70,13 +70,15 @@ rpkg = extract(rpkg_name, rpkg_path)
 # DLGE - 00B68C63029BFD05
 ########
 
-# rpkg_name = 'chunk23.rpkg'
+# Hyphen within block ; seek - 78174598, size 3520, unpacked 3575
+
+# rpkg_name = 'chunk28.rpkg'
 # rpkg_path = os.path.join(directory, rpkg_name)
 # f = open(rpkg_path, 'rb')
-# f.seek(47846495)
-# raw_data = bytearray(f.read(1351))
-# raw_data = xor(raw_data, 1351)
-# raw_bytes = decompress(raw_data, 1383)
+# f.seek(420308766)
+# raw_data = bytearray(f.read(2472))
+# raw_data = xor(raw_data, 2472)
+# raw_bytes = decompress(raw_data, 2535)
 
 # # DLGE specific
 # print(decode_dlge_to_string(raw_bytes))
