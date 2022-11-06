@@ -1,5 +1,5 @@
 from os.path import getsize
-from typing import List, Union
+from typing import List, Union, Tuple
 from Hash import Hash, HashHeader, HashResource, HashReferenceData
 from RPKG import RPKG, Header
 import re, numpy, math
@@ -14,6 +14,28 @@ def xor(raw_data: bytearray, length: int) -> bytearray:
     # Key multiplication in order to match the data length
     key = (xor_array*int(math.ceil(float(length)/8.0)))[:length]
     return (numpy.bitwise_xor(raw_data, key)).tobytes()
+
+def symmetric_key_decrypt_localization(value: int) -> int:
+    # Adapted from crypto::symmetric_key_decrypt_localization
+    # https://github.com/glacier-modding/RPKG-Tool/blob/48f01af7cbc1b782473f1ab24362cca913c9686a/src/crypto.cpp#L84
+    bits = [value & 1, (value & 2) >> 1, (value & 4) >> 2, (value & 8) >> 3, (value & 16) >> 4, (value & 32) >> 5, (value & 64) >> 6, (value & 128) >> 7]
+    output = (bits[0] << 0) | (bits[1] << 4) | (bits[2] << 1) | (bits[3] << 5) | (bits[4] << 2) | (bits[5] << 6) | (bits[6] << 3) | (bits[7] << 7)
+    return output ^ 226
+
+l10n_key: List[int] = [0x53527737, 0x7506499E, 0xBD39AEE3, 0xA59E7268]
+l10n_delta = 0x9E3779B9
+
+def xtea_decrypt_localization(v0_init: bytes, v1_init: bytes) -> Tuple[bytes, bytes]:
+    # Adapted from crypto::xtea_decrypt_localization
+    # https://github.com/glacier-modding/RPKG-Tool/blob/48f01af7cbc1b782473f1ab24362cca913c9686a/src/crypto.cpp#L34
+    sum = 0xC6EF3720
+    v0 = numpy.frombuffer(v0_init, dtype=numpy.uint32)
+    v1 = numpy.frombuffer(v1_init, dtype=numpy.uint32)
+    for _ in range(32): # num_rounds
+        v1 = v1 - ((v0 << 4 ^ v0 >> 5) + v0 ^ sum + l10n_key[sum >> 11 & 3])
+        sum -= l10n_delta
+        v0 = v0 - ((v1 << 4 ^ v1 >> 5) + v1 ^ sum + l10n_key[sum & 3])
+    return (v0.tobytes(), v1.tobytes())
 
 def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, min_size: int = 10) -> List[str]:
     # Doesn't filter out ALL of the junk, but it does an okay job
@@ -162,6 +184,8 @@ def extract(rpkg_name: str, rpkg_path: str):
             raw_data = decompress(raw_data, data_size)
         else:
             data_size = hash_size
+
+        # RTLV, LOCR, DLGE are all JSON
 
         rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data, data_size)
 
