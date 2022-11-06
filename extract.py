@@ -1,5 +1,5 @@
 from os.path import getsize
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 from Hash import Hash, HashHeader, HashResource, HashReferenceData
 from RPKG import RPKG, Header
 import re, numpy, math
@@ -108,6 +108,52 @@ def decode_locr_to_json_strings(raw_bytes: bytes) -> List[str]:
                     string += a[0].decode('utf-8') + a[1].decode('utf-8')
             all_strings.add(string.strip('\x00'))
     return list(all_strings)    
+
+def decode_dlge_to_string(raw_bytes: bytes) -> Optional[str]:
+    assert raw_bytes[0] == 0
+    assert raw_bytes[4] == 1
+    position = 8
+
+    text_available = (int.from_bytes(raw_bytes[position:position+1], 'little') == 1)
+    position += 1
+
+    number_of_dlge_categories = 0
+    if text_available:
+        number_of_dlge_categories += 1
+        # category = int.from_bytes(raw_bytes[position:position+4], 'little')
+        position += 4
+        # identifier = int.from_bytes(raw_bytes[position:position+4], 'little')
+        position += 4
+
+        # Mirroring the C++ code w/o the validation
+        position += 4 + 8 + 4
+
+        check = int.from_bytes(raw_bytes[position:position+4], 'little')
+        if check == 0:
+            position += 4
+
+        check1 = int.from_bytes(raw_bytes[position:position+4], 'little')
+        position += 4
+        check2 = int.from_bytes(raw_bytes[position:position+4], 'little')
+        position += 4
+
+        assert (check1 == 0xFFFFFFFF and check2 == 0xFFFFFFFF) or ((check1 + 1) == check2) or check2 == 0xFFFFFFFF
+
+        # en is first
+        temp_language_string_sizes = int.from_bytes(raw_bytes[position:position+4], 'little')
+        position += 4
+
+        temp_string = raw_bytes[position:position+temp_language_string_sizes]
+        position += temp_language_string_sizes + 1
+
+        string = ''
+        assert temp_language_string_sizes % 8 == 0
+        for i in range(int(temp_language_string_sizes / 8)):
+            a = xtea_decrypt_localization(temp_string[i*8:i*8 + 4], temp_string[i*8 + 4:i*8 + 8])
+            string += a[0].decode('utf-8') + a[1].decode('utf-8')
+        string = string.strip('\x00')
+        return string
+    return None
 
 def extract(rpkg_name: str, rpkg_path: str):
     rpkg = RPKG(rpkg_name, rpkg_path)
@@ -236,10 +282,30 @@ def extract(rpkg_name: str, rpkg_path: str):
         else:
             data_size = hash_size
 
+        if rpkg.hashes[i].getFormattedHash() == '000ECD34A5D5DD7D':
+            print(raw_data)
+            print(rpkg_path)
+            print(rpkg.hashes[i].header.data_offset)
+            print(hash_size)
+            print(rpkg.hashes[i].lz4ed)
+            print(rpkg.hashes[i].xored)
+            print(rpkg.hashes[i].resource.size_final)
+            exit()
+
         # RTLV, LOCR, DLGE are all JSON
         if rpkg.hashes[i].hash_resource_type == 'LOCR':
             rpkg.hashes[i].hex_strings = decode_locr_to_json_strings(raw_data)
+        elif rpkg.hashes[i].hash_resource_type == 'DLGE':
+            try:
+                string = decode_dlge_to_string(raw_data)
+            except:
+                print(rpkg.hashes[i].getHexName(), data_size)
+                exit()
+            if string is not None:
+                rpkg.hashes[i].hex_strings = [string]
         else:
+            if data_size > 1200:
+                print(rpkg.hashes[i].getHexName(), data_size)
             rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data, data_size)  
 
     f.close()
