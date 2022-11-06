@@ -98,12 +98,8 @@ for i in range(number_of_languages):
 
         print(temp_language_string_hash, temp_language_string_length, raw_bytes[position:position+temp_language_string_length])
 
-        temp_string: List[Tuple[bytes, bytes]] = []
-        for m in range(temp_language_string_length):
-            temp_string.append(raw_bytes[position:position+1])
-            position += 1
-        print(temp_string)
-        position += 1
+        temp_string = raw_bytes[position:position+temp_language_string_length]
+        position += temp_language_string_length + 1
 
         if symKey:
             # symmetric_key_decrypt_localization, ignoring for now
@@ -114,10 +110,6 @@ for i in range(number_of_languages):
             string = None
             assert temp_language_string_length % 8 == 0
             for i in range(int(temp_language_string_length / 8)):
-                print(i)
-                one = temp_string[i*8:i*8+4]
-                two = temp_string[i*8+4:i*8+8]
-                print(one, two)
                 a = xtea_decrypt_localization(temp_string[i*8:i*8 + 4], temp_string[i*8 + 4:i*8 + 8])
                 print(a)
                 if (string is None):
