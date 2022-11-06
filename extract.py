@@ -264,7 +264,14 @@ def extract(rpkg_name: str, rpkg_path: str):
         hash = Hash(HashHeader(f))
         rpkg.hashes[i] = hash
 
+    last_perc = 0.0
     for i in range(rpkg.header.hash_count):
+        # Progress tracking
+        new_perc = round(i * 100.0 / rpkg.header.hash_count, 1)
+        if new_perc > last_perc:
+            last_perc = new_perc
+            print(str(new_perc) + '%' + ' - ' + str(i))
+
         rpkg.hashes[i].resource = HashResource(f)
         
         # Determine hash's size and if it is LZ4ed and/or XORed
