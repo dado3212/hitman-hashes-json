@@ -1,8 +1,8 @@
 from os.path import getsize
-from typing import List, Union, Tuple, Optional
+from typing import List, Union, Tuple, Optional, Dict
 from Hash import Hash, HashHeader, HashResource, HashReferenceData
 from RPKG import RPKG, Header
-import re, numpy, math
+import numpy, math
 from lz4 import decompress
 import ctypes
 
@@ -88,7 +88,14 @@ def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, resource_type:
         chunks.append((raw_data[current_pos:]).decode('utf-8'))
     return chunks
 
-def decode_locr_to_json_strings(raw_bytes: bytes) -> List[str]:
+def flatten_locr_dict_to_set(input: Dict[int, set[str]]) -> List[str]:
+    strings: set[str] = set()
+    for key in input:
+        for string in input[key]:
+            strings.add(string)
+    return list(strings)
+
+def decode_locr_to_json_strings(raw_bytes: bytes) -> Dict[int, set[str]]:
     if (raw_bytes[0] == 0 or raw_bytes[0] == 1):
         position = 1
         number_of_languages = int((int.from_bytes(raw_bytes[position:position+4], 'little') - 1)/4)
@@ -107,7 +114,7 @@ def decode_locr_to_json_strings(raw_bytes: bytes) -> List[str]:
         offsets.append(offset)
         position += 4
 
-    all_strings: set[str] = set()
+    all_strings: Dict[int, set[str]] = {}
     # This can go up to number_of_languages but we only care about the first two, xx and en
     for i in range(2):
         if offsets[i] == 0xFFFFFFFF:
@@ -116,7 +123,7 @@ def decode_locr_to_json_strings(raw_bytes: bytes) -> List[str]:
         position += 4
 
         for i in range(language_string_count):
-            # temp_language_string_hash = int.from_bytes(raw_bytes[position:position+4], 'little')
+            temp_language_string_hash = int.from_bytes(raw_bytes[position:position+4], 'little')
             position += 4
 
             temp_language_string_length = int.from_bytes(raw_bytes[position:position+4], 'little')
@@ -127,7 +134,9 @@ def decode_locr_to_json_strings(raw_bytes: bytes) -> List[str]:
 
             if symKey:
                 # symmetric_key_decrypt_localization, ignoring for now
-                all_strings.add(''.join([chr(symmetric_key_decrypt_localization(x)) for x in temp_string]))
+                if temp_language_string_hash not in all_strings:
+                    all_strings[temp_language_string_hash] = set()
+                all_strings[temp_language_string_hash].add(''.join([chr(symmetric_key_decrypt_localization(x)) for x in temp_string]))
             else:
                 string = None
                 assert temp_language_string_length % 8 == 0
@@ -138,8 +147,10 @@ def decode_locr_to_json_strings(raw_bytes: bytes) -> List[str]:
                     else:
                         string += a[0] + a[1]
                 if string is not None:
-                    all_strings.add(string.decode('utf-8').strip('\x00'))
-    return list(all_strings)    
+                    if temp_language_string_hash not in all_strings:
+                        all_strings[temp_language_string_hash] = set()
+                    all_strings[temp_language_string_hash].add(string.decode('utf-8').strip('\x00'))
+    return all_strings
 
 def decode_dlge_to_string(raw_bytes: bytes) -> Optional[str]:
     assert raw_bytes[0] == 0
@@ -326,11 +337,18 @@ def extract(rpkg_name: str, rpkg_path: str):
 
         # RTLV, LOCR, DLGE are all JSON
         if rpkg.hashes[i].hash_resource_type == 'LOCR':
-            rpkg.hashes[i].hex_strings = decode_locr_to_json_strings(raw_data)
+            locr = decode_locr_to_json_strings(raw_data)
+            rpkg.hashes[i].hex_strings = flatten_locr_dict_to_set(locr)
+            # LINE will use this later
+            rpkg.hashes[i].data_dump = locr
         elif rpkg.hashes[i].hash_resource_type == 'DLGE':
             string = decode_dlge_to_string(raw_data)
             if string is not None:
                 rpkg.hashes[i].hex_strings = [string]
+        elif rpkg.hashes[i].hash_resource_type == 'LINE':
+            # We can use LOCR data to convert this before writing to JSON in
+            # the build_json.py file
+            rpkg.hashes[i].data_dump = int.from_bytes(raw_data[0:4], 'little')
         else:
             rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data, data_size, rpkg.hashes[i].hash_resource_type)
 

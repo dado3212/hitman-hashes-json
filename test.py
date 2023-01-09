@@ -17,7 +17,7 @@ directory = "D:\\Program Files (x86)\\Epic Games\\HITMAN3\\Runtime"
 
 # Add the following for whatever hash you want to analyze to extract.py before the chunkify piece
 
-# if rpkg.hashes[i].getFormattedHash() == '00DDDDCFBFA2477B':
+# if rpkg.hashes[i].getFormattedHash() == '00535774108A0E41':
 #     print(raw_data)
 #     print(rpkg_path)
 #     print(rpkg.hashes[i].header.data_offset)
@@ -29,10 +29,10 @@ directory = "D:\\Program Files (x86)\\Epic Games\\HITMAN3\\Runtime"
 
 # And then uncomment and run the following:
 
-rpkg_name = 'chunk28.rpkg'
-print("Looking at", rpkg_name)
-rpkg_path = os.path.join(directory, rpkg_name)
-rpkg = extract(rpkg_name, rpkg_path)
+# rpkg_name = 'chunk0patch2.rpkg'
+# print("Looking at", rpkg_name)
+# rpkg_path = os.path.join(directory, rpkg_name)
+# rpkg = extract(rpkg_name, rpkg_path)
 
 ########
 # LZ4 - 006ABC35562F09D2
@@ -61,10 +61,22 @@ rpkg = extract(rpkg_name, rpkg_path)
 # raw_data = bytearray(f.read(241))
 # raw_data = xor(raw_data, 241)
 # raw_bytes = decompress(raw_data, 617)
-# # print_bytes(raw_bytes) - confirm that we're correctly decoding to this point
+# # print_bytes(raw_bytes) #  confirm that we're correctly decoding to this point
 
-# # decode JSON
+# # # decode JSON
 # print(decode_locr_to_json_strings(raw_bytes))
+
+########
+# LINE - 0012402F364E8A65
+########
+
+# rpkg_name = 'chunk27.rpkg'
+# rpkg_path = os.path.join(directory, rpkg_name)
+# f = open(rpkg_path, 'rb')
+# f.seek(37743475)
+# raw_data = bytearray(f.read(5))
+# raw_data = xor(raw_data, 5)
+# print(int.from_bytes(raw_data[0:4], 'little')) # 3735784903 -> need to go through LOCR to figure out what it is
 
 ########
 # DLGE - 00B68C63029BFD05

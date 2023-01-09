@@ -65,7 +65,17 @@ for rpkg_name in rpkgs_names:
 
     for hash in rpkg.hashes_by_hash:
         if hash in all_hashes:
+            # Add the chunk
             all_hashes[hash].chunks.append(chunk_num)
+            # TODO: This should maybe overwrite?
+            # Merge dependencies
+            current_hash_data = all_hashes[hash].hash_reference_data
+            incoming_hash_data = rpkg.hashes_by_hash[hash].hash_reference_data
+            if current_hash_data is not None and incoming_hash_data is not None:
+                current_hash_data.hash_reference = list(set(current_hash_data.hash_reference).union(incoming_hash_data.hash_reference))
+                all_hashes[hash].hash_reference_data = current_hash_data
+            # Merge hex strings
+            all_hashes[hash].hex_strings = list(set(all_hashes[hash].hex_strings).union(rpkg.hashes_by_hash[hash].hex_strings))
         else:
             all_hashes[hash] = rpkg.hashes_by_hash[hash]
             all_hashes[hash].chunks = [chunk_num]
@@ -80,6 +90,20 @@ for hash in all_hashes:
         'correct_name': ioi_string_to_hex(mapping[hash]) == file,
         'hex_strings': all_hashes[hash].hex_strings
     }
+    # LINE post-processing
+    if all_hashes[hash].hash_resource_type == 'LINE':
+        crc32 = all_hashes[hash].data_dump
+        strings: set[str] = set()
+        for depends in all_hashes[hash].getDependencies():
+            if (
+                depends in all_hashes and 
+                all_hashes[depends].hash_resource_type == 'LOCR' and
+                crc32 in all_hashes[depends].data_dump
+            ):
+                for string in all_hashes[depends].data_dump[crc32]:
+                    strings.add(string)
+        strings = strings.union(data[file]['hex_strings'])
+        data[file]['hex_strings'] = list(strings)
 
 # Serializing json
 json_object = json.dumps(data, indent=4)

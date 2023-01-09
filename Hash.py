@@ -1,4 +1,4 @@
-from typing import BinaryIO, List, Optional
+from typing import BinaryIO, List, Optional, Any
 
 class HashReferenceData:
     def __init__(self, f: BinaryIO):
@@ -50,6 +50,13 @@ class Hash:
         self.chunks: List[str] = []
 
         self.hex_strings: List[str] = []
+
+        # This is a weird field that we use for storing temporary data.
+        # It's used by LOCR to track all the mapping of strings,
+        # and it's used by LINE to know the CRC32 that it can use to index
+        # into LOCRs when everything is done being converted, and we can do 
+        # a cleanup pass. This DOES NOT make it into the JSON output (currently)
+        self.data_dump: Any = None
 
     def getHexName(self) -> str:
         return self.getFormattedHash() + '.' + self.hash_resource_type

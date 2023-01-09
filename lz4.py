@@ -32,7 +32,7 @@ def compress(src_arr):
     return dst_data[:n]
 
 
-def decompress(buff, dst_size):
+def decompress(buff: bytearray, dst_size: int) -> bytes:
     src_size = len(buff)
     arr_type = ctypes.c_char * src_size
     src_data = ctypes.cast(buff, ctypes.c_char_p)
