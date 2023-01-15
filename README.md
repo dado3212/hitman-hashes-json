@@ -1,6 +1,9 @@
 # Hitman Hashes in JSON
 A JSON dump of the hashes in Hitman. You can build it yourself with `python3 build_json.py`, but the easiest way is to just download the latest release file.
 
+If you're trying to update this because a new hash_list.txt file dropped but the game files are the same it's much faster to run `python3 update_json.py` with
+the current production release in the directory as `hashes.json`.
+
 Here's a sample format that it's in:
 
 ```
