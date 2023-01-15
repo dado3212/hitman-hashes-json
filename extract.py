@@ -48,6 +48,7 @@ def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, resource_type:
         return []
     elif resource_type in ['RTLV']:
         # TODO: Convert this to JSON extraction
+        # TODO: Also do the same for REPO (and ORES?)
         return []
     # Didn't check for use, but they're big and I think it's useless
     elif resource_type in ['NAVP', 'AIRG']:
@@ -63,14 +64,21 @@ def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, resource_type:
         # worried
         max_length = 1000000
     # kind of just useful in general, keep it big (ATMD, ECPB, FXAS, MATB, MATI are all small) (MATI might be only useful at the beginning)
-    elif resource_type in ['BORG', 'ASVA', 'ATMD', 'ECPB', 'FXAS', 'MATB', 'MATI']:
+    elif resource_type in ['BORG', 'ASVA', 'ATMD', 'ECPB', 'FXAS', 'MATB']:
         max_length = 1000000
+    elif resource_type in ['MATI']:
+        max_length = 1000000
+        min_size = 6
     elif resource_type in ['MATE', 'GFXF', 'MRTN']:
         # TODO: Data at the beginning and the end, can we excise the middle?
         max_length = 1000000
     # Good through the whole thing, but could probably be kept small
     elif resource_type in ['ATMD']:
         max_length = 1000000
+    # turn on little strings for these two
+    elif resource_type in ['DSWB', 'WSWB']:
+        max_length = 1000000
+        min_size = 3
     else:
         max_length = 1000000
 

@@ -29,10 +29,42 @@ directory = "D:\\Program Files (x86)\\Epic Games\\HITMAN3\\Runtime"
 
 # And then uncomment and run the following:
 
-# rpkg_name = 'chunk0patch2.rpkg'
+# rpkg_name = 'chunk1patch2.rpkg'
 # print("Looking at", rpkg_name)
 # rpkg_path = os.path.join(directory, rpkg_name)
 # rpkg = extract(rpkg_name, rpkg_path)
+
+########
+# WSWB - 00F678A0DE445545
+########
+
+# rpkg_name = 'chunk0.rpkg'
+# rpkg_path = os.path.join(directory, rpkg_name)
+# f = open(rpkg_path, 'rb')
+# f.seek(22942730)
+# raw_data = bytearray(f.read(121))
+
+# raw_data = xor(raw_data, 121)
+# print(raw_data)
+# f = decompress(raw_data, 172)
+# print(f)
+# print(chunkify_bytes(f, 172, 'WSWB'))
+
+########
+# MATI - 00615023F867E70E (short string extraction)
+########
+
+# rpkg_name = 'chunk1patch2.rpkg'
+# rpkg_path = os.path.join(directory, rpkg_name)
+# f = open(rpkg_path, 'rb')
+# f.seek(506954228)
+# raw_data = bytearray(f.read(868))
+
+# raw_data = xor(raw_data, 868)
+# print(raw_data)
+# f = decompress(raw_data, 2624)
+# print(f)
+# print(chunkify_bytes(f, 2624, 'MATI'))
 
 ########
 # LZ4 - 006ABC35562F09D2
