@@ -357,6 +357,9 @@ def extract(rpkg_name: str, rpkg_path: str):
             # We can use LOCR data to convert this before writing to JSON in
             # the build_json.py file
             rpkg.hashes[i].data_dump = int.from_bytes(raw_data[0:4], 'little')
+        # Just directly inline JSON
+        elif rpkg.hashes[i].hash_resource_type == 'JSON':
+            rpkg.hashes[i].hex_strings = [raw_data.decode('utf-8')]
         else:
             rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data, data_size, rpkg.hashes[i].hash_resource_type)
 

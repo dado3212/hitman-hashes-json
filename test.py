@@ -17,7 +17,7 @@ directory = "D:\\Program Files (x86)\\Epic Games\\HITMAN3\\Runtime"
 
 # Add the following for whatever hash you want to analyze to extract.py before the chunkify piece
 
-# if rpkg.hashes[i].getFormattedHash() == '00535774108A0E41':
+# if rpkg.hashes[i].getFormattedHash() == '002D4F19DCD209F1':
 #     print(raw_data)
 #     print(rpkg_path)
 #     print(rpkg.hashes[i].header.data_offset)
@@ -29,7 +29,7 @@ directory = "D:\\Program Files (x86)\\Epic Games\\HITMAN3\\Runtime"
 
 # And then uncomment and run the following:
 
-# rpkg_name = 'chunk1patch2.rpkg'
+# rpkg_name = 'chunk0.rpkg'
 # print("Looking at", rpkg_name)
 # rpkg_path = os.path.join(directory, rpkg_name)
 # rpkg = extract(rpkg_name, rpkg_path)
