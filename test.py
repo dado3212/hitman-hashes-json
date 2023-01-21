@@ -1,7 +1,7 @@
 import os, math, numpy
 from typing import List, Tuple
 from lz4 import decompress
-from extract import extract, chunkify_bytes, xor, decode_locr_to_json_strings, xtea_decrypt_localization, decode_dlge_to_string
+from extract import extract, chunkify_bytes, xor, decode_locr_to_json_strings, xtea_decrypt_localization, decode_dlge_to_string, decode_rtlv_to_json_strings
 from utils import print_bytes
 
 # Test functions for messing around with logic
@@ -29,7 +29,7 @@ directory = "D:\\Program Files (x86)\\Epic Games\\HITMAN3\\Runtime"
 
 # And then uncomment and run the following:
 
-# rpkg_name = 'chunk0.rpkg'
+# rpkg_name = 'chunk28.rpkg'
 # print("Looking at", rpkg_name)
 # rpkg_path = os.path.join(directory, rpkg_name)
 # rpkg = extract(rpkg_name, rpkg_path)
@@ -127,4 +127,17 @@ directory = "D:\\Program Files (x86)\\Epic Games\\HITMAN3\\Runtime"
 # # DLGE specific
 # print(decode_dlge_to_string(raw_bytes))
 
-        
+########
+# RTLV - 00DDA871EA200CCF
+########
+
+# rpkg_name = 'chunk28.rpkg'
+# rpkg_path = os.path.join(directory, rpkg_name)
+# f = open(rpkg_path, 'rb')
+# f.seek(2052427504)
+# raw_data = bytearray(f.read(31167))
+# raw_data = xor(raw_data, 31167)
+# raw_bytes = decompress(raw_data, 33664)
+
+# # decode JSON
+# print(decode_rtlv_to_json_strings(raw_bytes))

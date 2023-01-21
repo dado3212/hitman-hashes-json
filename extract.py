@@ -43,7 +43,7 @@ def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, resource_type:
     # Doesn't filter out ALL of the junk, but it does an okay job
     # if chunk_size > 20 or re.match(r'.*([A-Z]{4}|[a-z]{4}).*', current_chunk):
 
-    # Nothing useful
+    # Nothing useful (This is wrong, MJBA CAN have something useful, towards the end)
     if resource_type in ['TEXD', 'PRIM', 'WWEM', 'VTXD', 'TEXT', 'MJBA', 'ALOC', 'WBNK', 'SCDA', 'GFXI', 'SDEF']:
         return []
     elif resource_type in ['RTLV']:
@@ -62,6 +62,8 @@ def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, resource_type:
     elif resource_type in ['TBLU', 'TEMP']:
         # TODO: Should be able to skip to FF FF FF FF FF FF sections if we're
         # worried
+        # giant valuable chunks with assembly lines in them, 05_a_05_3bff819b as
+        # a partial from scenario_dugong.brick
         max_length = 1000000
     # kind of just useful in general, keep it big (ATMD, ECPB, FXAS, MATB, MATI are all small) (MATI might be only useful at the beginning)
     elif resource_type in ['BORG', 'ASVA', 'ATMD', 'ECPB', 'FXAS', 'MATB']:
@@ -159,6 +161,61 @@ def decode_locr_to_json_strings(raw_bytes: bytes) -> Dict[int, set[str]]:
                         all_strings[temp_language_string_hash] = set()
                     all_strings[temp_language_string_hash].add(string.decode('utf-8').strip('\x00'))
     return all_strings
+
+def decode_rtlv_to_json_strings(raw_bytes: bytes) -> List[str]:
+    languages_starting_offset = int.from_bytes(raw_bytes[0x58:0x58+4], 'little')
+
+    position = 0
+    position += 8
+
+    rtlv_data_size_raw = int.from_bytes(raw_bytes[position:position+4], 'little')
+    position += 4
+
+    rtlv_data_size =  ((rtlv_data_size_raw & 0x000000FF) << 0x18) + ((rtlv_data_size_raw & 0x0000FF00) << 0x8) + ((rtlv_data_size_raw & 0x00FF0000) >> 0x8) + ((rtlv_data_size_raw & 0xFF000000) >> 0x18)
+
+    assert languages_starting_offset < rtlv_data_size
+    languages_starting_offset += 0xC
+
+    rtlv_header_data_size = languages_starting_offset - position
+    position += rtlv_header_data_size
+
+    number_of_languages = int.from_bytes(raw_bytes[position:position+4], 'little')
+    position += 4
+
+    for _ in range(number_of_languages):
+        # mirroring the C implementation
+        position += 2
+        position += 2
+        position += 4
+        position += 4
+        position += 4
+
+    # First one is 'xx', second one is 'en'
+    decoded_strings: List[str] = []
+
+    for _ in range(2): # really this should just be two for xx and en
+        language_data_size = int.from_bytes(raw_bytes[position:position+4], 'little')
+        position += 4
+
+        if language_data_size == 0:
+            position += 4
+            continue
+        else:
+            temp_string = raw_bytes[position:position+language_data_size]
+            position += language_data_size
+
+        string = None
+        assert language_data_size % 8 == 0
+        for m in range((int)(language_data_size / 8)):
+            a = xtea_decrypt_localization(temp_string[m*8:m*8 + 4], temp_string[m*8 + 4:m*8 + 8])
+            if (string is None):
+                string = a[0] + a[1]
+            else:
+                string += a[0] + a[1]
+        if string is not None:
+            decoded_strings.append(string.decode('utf-8').strip('\x00'))
+
+    return decoded_strings
 
 def decode_dlge_to_string(raw_bytes: bytes) -> Optional[str]:
     assert raw_bytes[0] == 0
@@ -344,7 +401,9 @@ def extract(rpkg_name: str, rpkg_path: str):
             data_size = hash_size
 
         # RTLV, LOCR, DLGE are all JSON
-        if rpkg.hashes[i].hash_resource_type == 'LOCR':
+        if rpkg.hashes[i].hash_resource_type == 'RTLV':
+            rpkg.hashes[i].hex_strings = decode_rtlv_to_json_strings(raw_data)
+        elif rpkg.hashes[i].hash_resource_type == 'LOCR':
             locr = decode_locr_to_json_strings(raw_data)
             rpkg.hashes[i].hex_strings = flatten_locr_dict_to_set(locr)
             # LINE will use this later
