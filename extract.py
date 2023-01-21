@@ -63,6 +63,8 @@ def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, resource_type:
         # giant valuable chunks with assembly lines in them, 05_a_05_3bff819b as
         # a partial from scenario_dugong.brick
         max_length = 1000000
+        # try 25M -> need a better way to do this ONLY for BRICKs. Or to quickly scan for real words
+        max_length = 25000000
     # kind of just useful in general, keep it big (ATMD, ECPB, FXAS, MATB, MATI are all small) (MATI might be only useful at the beginning)
     elif resource_type in ['BORG', 'ASVA', 'ATMD', 'ECPB', 'FXAS', 'MATB']:
         max_length = 1000000
@@ -171,7 +173,8 @@ def decode_rtlv_to_json_strings(raw_bytes: bytes) -> List[str]:
 
     rtlv_data_size =  ((rtlv_data_size_raw & 0x000000FF) << 0x18) + ((rtlv_data_size_raw & 0x0000FF00) << 0x8) + ((rtlv_data_size_raw & 0x00FF0000) >> 0x8) + ((rtlv_data_size_raw & 0xFF000000) >> 0x18)
 
-    assert languages_starting_offset < rtlv_data_size
+    if languages_starting_offset >= rtlv_data_size:
+        return []
     languages_starting_offset += 0xC
 
     rtlv_header_data_size = languages_starting_offset - position

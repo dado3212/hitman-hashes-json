@@ -29,7 +29,7 @@ directory = "D:\\Program Files (x86)\\Epic Games\\HITMAN3\\Runtime"
 
 # And then uncomment and run the following:
 
-# rpkg_name = 'chunk28.rpkg'
+# rpkg_name = 'chunk0.rpkg'
 # print("Looking at", rpkg_name)
 # rpkg_path = os.path.join(directory, rpkg_name)
 # rpkg = extract(rpkg_name, rpkg_path)
@@ -140,4 +140,17 @@ directory = "D:\\Program Files (x86)\\Epic Games\\HITMAN3\\Runtime"
 # raw_bytes = decompress(raw_data, 33664)
 
 # # decode JSON
+# print(decode_rtlv_to_json_strings(raw_bytes))
+
+########
+# RTLV 2 - 00FA00A3BC1DFCB4
+########
+
+# rpkg_name = 'chunk0.rpkg'
+# rpkg_path = os.path.join(directory, rpkg_name)
+# f = open(rpkg_path, 'rb')
+# f.seek(1066761078)
+# raw_data = bytearray(f.read(134))
+# raw_data = xor(raw_data, 134)
+# raw_bytes = decompress(raw_data, 224)
 # print(decode_rtlv_to_json_strings(raw_bytes))
