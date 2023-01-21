@@ -43,12 +43,10 @@ def chunkify_bytes(raw_data: Union[bytearray,bytes], length: int, resource_type:
     # Doesn't filter out ALL of the junk, but it does an okay job
     # if chunk_size > 20 or re.match(r'.*([A-Z]{4}|[a-z]{4}).*', current_chunk):
 
+    # TODO: Convert ORES? to JSON extraction
     # Nothing useful (This is wrong, MJBA CAN have something useful, towards the end)
+    # ^ dumbass past me didn't remember to put a number so we'll figure it out...sometime
     if resource_type in ['TEXD', 'PRIM', 'WWEM', 'VTXD', 'TEXT', 'MJBA', 'ALOC', 'WBNK', 'SCDA', 'GFXI', 'SDEF']:
-        return []
-    elif resource_type in ['RTLV']:
-        # TODO: Convert this to JSON extraction
-        # TODO: Also do the same for REPO (and ORES?)
         return []
     # Didn't check for use, but they're big and I think it's useless
     elif resource_type in ['NAVP', 'AIRG']:
@@ -416,8 +414,8 @@ def extract(rpkg_name: str, rpkg_path: str):
             # We can use LOCR data to convert this before writing to JSON in
             # the build_json.py file
             rpkg.hashes[i].data_dump = int.from_bytes(raw_data[0:4], 'little')
-        # Just directly inline JSON
-        elif rpkg.hashes[i].hash_resource_type == 'JSON':
+        # Just directly inline JSON files
+        elif rpkg.hashes[i].hash_resource_type in ['JSON', 'REPO']:
             rpkg.hashes[i].hex_strings = [raw_data.decode('utf-8')]
         else:
             rpkg.hashes[i].hex_strings = chunkify_bytes(raw_data, data_size, rpkg.hashes[i].hash_resource_type)
